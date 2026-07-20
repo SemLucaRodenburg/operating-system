@@ -25,7 +25,7 @@ export default function LoginPage() {
       </Suspense>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Geen wachtwoord nodig — je ontvangt een magic link per e-mail.
+        Eerste keer hier? Maak een account aan via het tabblad hierboven.
       </p>
     </div>
   );

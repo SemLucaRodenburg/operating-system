@@ -1,33 +1,63 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { headers } from "next/headers";
 
-export async function sendMagicLink(
-  _prevState: { status: "idle" | "sent" | "error"; message?: string },
+export interface AuthFormState {
+  status: "idle" | "error";
+  message?: string;
+}
+
+export async function signIn(
+  _prevState: AuthFormState,
   formData: FormData
-): Promise<{ status: "idle" | "sent" | "error"; message?: string }> {
+): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim();
-  const redirect = String(formData.get("redirect") ?? "/");
+  const password = String(formData.get("password") ?? "");
+  const redirectTo = String(formData.get("redirect") ?? "/");
 
-  if (!email || !email.includes("@")) {
-    return { status: "error", message: "Vul een geldig e-mailadres in." };
+  if (!email || !password) {
+    return { status: "error", message: "Vul e-mail en wachtwoord in." };
   }
 
   const supabase = await createClient();
-  const originHeader = (await headers()).get("origin");
-  const origin = originHeader ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
-    },
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { status: "error", message: error.message };
   }
 
-  return { status: "sent", message: `Check je inbox op ${email} voor de inloglink.` };
+  redirect(redirectTo);
+}
+
+export async function signUp(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (!email || !password) {
+    return { status: "error", message: "Vul e-mail en wachtwoord in." };
+  }
+  if (password.length < 8) {
+    return { status: "error", message: "Wachtwoord moet minstens 8 tekens zijn." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  if (error) {
+    return { status: "error", message: error.message };
+  }
+
+  if (!data.session) {
+    return {
+      status: "error",
+      message:
+        "Account aangemaakt, maar niet automatisch ingelogd — check of 'Confirm email' uitstaat in Supabase, of bevestig via de mail.",
+    };
+  }
+
+  redirect("/");
 }
