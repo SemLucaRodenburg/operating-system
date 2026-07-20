@@ -1,6 +1,3 @@
-const CACHE_NAME = "levens-os-v1";
-const OFFLINE_URL = "/";
-
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
@@ -9,19 +6,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Network-first: this is a dynamic, authenticated app — never serve a stale
-// cached page instead of fresh (possibly redirected-to-login) content.
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-
-  event.respondWith(
-    fetch(event.request).catch(async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(event.request);
-      return cached ?? cache.match(OFFLINE_URL);
-    })
-  );
-});
+// No custom fetch handling: this is a dynamic, authenticated app with no
+// precached assets, so intercepting fetches would only add risk (a broken
+// fallback can turn a transient network hiccup into a hard failure) without
+// any offline benefit. Let the browser handle all requests natively.
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
